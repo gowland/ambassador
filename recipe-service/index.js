@@ -25,7 +25,23 @@ app.post('/recipe/:name', async (req, res) => {
     return res.status(400).json({ error: 'Ingredients must be an array' });
   }
 
-  await redisClient.set(name, JSON.stringify(ingredients));
+  // Get existing ingredients if any
+  const existingData = await redisClient.get(name);
+  let existingIngredients = [];
+  
+  if (existingData) {
+    existingIngredients = JSON.parse(existingData);
+  }
+  
+  // Merge new ingredients with existing ones, avoiding duplicates
+  const allIngredients = [...existingIngredients];
+  ingredients.forEach(ingredient => {
+    if (!allIngredients.includes(ingredient)) {
+      allIngredients.push(ingredient);
+    }
+  });
+
+  await redisClient.set(name, JSON.stringify(allIngredients));
   res.status(200).json({ message: `Ingredients for ${name} saved.` });
 });
 
