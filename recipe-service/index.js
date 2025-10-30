@@ -161,37 +161,6 @@ app.get('/recipe/:name', async (req, res) => {
   }
 });
 
-// Get all recipes
-app.get('/api/recipes', async (req, res) => {
-  const timestamp = new Date().toISOString();
-  console.log(`[API] ${timestamp} GET /api/recipes - Retrieving all recipes`);
-
-  try {
-    const keys = await redisClient.keys('*');
-    console.log(`[API] ${timestamp} Found ${keys.length} recipe keys:`, keys);
-    
-    const recipes = [];
-    
-    for (const key of keys) {
-      const ingredients = await redisClient.get(key);
-      if (ingredients) {
-        const parsedIngredients = JSON.parse(ingredients);
-        recipes.push({
-          name: key,
-          ingredients: parsedIngredients
-        });
-        console.log(`[API] ${timestamp} Loaded recipe ${key} with ${parsedIngredients.length} ingredients`);
-      }
-    }
-    
-    console.log(`[API SUCCESS] ${timestamp} Successfully retrieved ${recipes.length} recipes`);
-    res.json(recipes);
-  } catch (error) {
-    console.error(`[API ERROR] ${timestamp} Failed to fetch recipes:`, error.message);
-    res.status(500).json({ error: 'Failed to fetch recipes' });
-  }
-});
-
 // Serve the main page
 app.get('/', (req, res) => {
   const timestamp = new Date().toISOString();

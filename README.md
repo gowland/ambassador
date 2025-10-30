@@ -20,3 +20,12 @@ PORT=3000
 Or with persistent storage
 
 `docker run --name recipe-redis -p 6379:6379 -d redis redis-server --save 60 1 --loglevel warning`
+
+### Start the service
+
+`node .\recipe-service\index.js`
+
+### End points
+
+* http://localhost:3000/ - Opens UI for adding ingredients to recipes
+* http://localhost:3000/recipe/<recipe name> - To get JSON of recipe

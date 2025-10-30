@@ -34,13 +34,6 @@
                     <button type="submit" class="btn-primary">Save Recipe</button>
                 </form>
             </section>
-
-            <section class="recipes-list">
-                <h2>Your Recipes</h2>
-                <div id="recipesList">
-                    <p class="loading">Loading recipes...</p>
-                </div>
-            </section>
         </main>
     </div>
 
@@ -98,7 +91,6 @@
                         const result = await response.json();
                         showNotification(`Recipe "${recipeName}" saved successfully!`, 'success');
                         resetForm();
-                        loadRecipes(); // Refresh the recipes list
                     } else {
                         const error = await response.json();
                         showNotification(error.error || 'Failed to save recipe', 'error');
@@ -139,64 +131,6 @@
                     notification.className = `notification ${type} hidden`;
                 }, 4000);
             }
-            
-            // Function to load recipes
-            async function loadRecipes() {
-                const recipesList = document.getElementById('recipesList');
-                
-                try {
-                    const response = await fetch('/api/recipes');
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch recipes');
-                    }
-                    
-                    const recipes = await response.json();
-                    
-                    if (recipes.length === 0) {
-                        recipesList.innerHTML = `
-                            <div class="empty-state">
-                                <h3>No recipes yet</h3>
-                                <p>Add your first recipe using the form above!</p>
-                            </div>
-                        `;
-                        return;
-                    }
-                    
-                    // Sort recipes alphabetically
-                    recipes.sort((a, b) => a.name.localeCompare(b.name));
-                    
-                    recipesList.innerHTML = recipes.map(recipe => `
-                        <div class="recipe-card">
-                            <h3>${escapeHtml(recipe.name)}</h3>
-                            <ul class="ingredients-list">
-                                ${recipe.ingredients.map(ingredient => 
-                                    `<li>${escapeHtml(ingredient)}</li>`
-                                ).join('')}
-                            </ul>
-                        </div>
-                    `).join('');
-                    
-                } catch (error) {
-                    console.error('Error loading recipes:', error);
-                    recipesList.innerHTML = `
-                        <div class="empty-state">
-                            <h3>Error loading recipes</h3>
-                            <p>Please refresh the page to try again.</p>
-                        </div>
-                    `;
-                }
-            }
-            
-            // Function to escape HTML
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-            
-            // Load recipes on page load
-            loadRecipes();
         });
     </script>
 </body>
