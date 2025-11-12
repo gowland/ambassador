@@ -1,34 +1,35 @@
 version: '3.8'
 
 services:
-  redis:
+  # Pod 1: Redis + Service
+  redis-1:
     image: redis:7-alpine
-    container_name: recipe-redis
+    container_name: recipe-redis-1
     volumes:
-      - redis_data:/data
+      - redis_data_1:/data
     command: redis-server --save 60 1 --loglevel warning
     networks:
-      - recipe-network
+      - recipe-network-1
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
 
-  redis-service:
+  redis-service-1:
     build: .
-    container_name: recipe-redis-service
+    container_name: recipe-redis-service-1
     ports:
       - "3001:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis-1:6379
     depends_on:
-      redis:
+      redis-1:
         condition: service_healthy
     networks:
-      - recipe-network
+      - recipe-network-1
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
@@ -37,9 +38,89 @@ services:
       retries: 3
       start_period: 40s
 
+  # Pod 2: Redis + Service
+  redis-2:
+    image: redis:7-alpine
+    container_name: recipe-redis-2
+    volumes:
+      - redis_data_2:/data
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - recipe-network-2
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  redis-service-2:
+    build: .
+    container_name: recipe-redis-service-2
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - REDIS_URL=redis://redis-2:6379
+    depends_on:
+      redis-2:
+        condition: service_healthy
+    networks:
+      - recipe-network-2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Pod 3: Redis + Service
+  redis-3:
+    image: redis:7-alpine
+    container_name: recipe-redis-3
+    volumes:
+      - redis_data_3:/data
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - recipe-network-3
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  redis-service-3:
+    build: .
+    container_name: recipe-redis-service-3
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - REDIS_URL=redis://redis-3:6379
+    depends_on:
+      redis-3:
+        condition: service_healthy
+    networks:
+      - recipe-network-3
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
-  redis_data:
+  redis_data_1:
+  redis_data_2:
+  redis_data_3:
 
 networks:
-  recipe-network:
+  recipe-network-1:
+    driver: bridge
+  recipe-network-2:
+    driver: bridge
+  recipe-network-3:
     driver: bridge
