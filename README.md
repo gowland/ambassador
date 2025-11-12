@@ -10,9 +10,15 @@ This project has been split into two separate Node.js services for better scalab
 - Provides RESTful API for recipe data
 - Runs on port 3001
 
-### 2. UI Service (`ui-service/`)
+### 2. Proxy Service (`proxy-service/`)
+- Acts as intelligent middleware layer
+- Provides request validation and rate limiting
+- Enhances logging and monitoring
+- Runs on port 3002
+
+### 3. UI Service (`ui-service/`)
 - Serves the web interface
-- Proxies API calls to the Redis service
+- Proxies API calls to the Proxy service
 - Handles static file serving
 - Runs on port 3000
 
@@ -51,10 +57,10 @@ This project has been split into two separate Node.js services for better scalab
 ## Architecture
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Browser   │────│ UI Service  │────│Redis Service│────│   Redis     │
-│             │    │ (Port 3000) │    │ (Port 3001) │    │ (Port 6379) │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Browser   │────│ UI Service  │────│Proxy Service│────│Redis Service│────│   Redis     │
+│             │    │ (Port 3000) │    │ (Port 3002) │    │ (Port 3001) │    │ (Port 6379) │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
 ## API Endpoints

@@ -88,12 +88,62 @@ The service runs on port 3001 by default. Make sure Redis is running before star
 
 ## Docker Support
 
-To run with Docker:
+### Option 1: Docker Compose (Recommended)
+The easiest way to run the Redis service with all dependencies:
 
+```bash
+# Start both Redis database and Redis service
+docker-compose up -d
+
+# Check the logs
+docker-compose logs -f
+
+# Stop the services
+docker-compose down
+
+# Stop and remove volumes (clears data)
+docker-compose down -v
+```
+
+### Option 2: Manual Docker Build
 ```bash
 # Build the image
 docker build -t redis-service .
 
-# Run the container
-docker run -p 3001:3001 --env-file .env redis-service
+# Run Redis first
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+
+# Run the Redis service
+docker run -d \
+  --name redis-service \
+  -p 3001:3001 \
+  -e REDIS_URL=redis://host.docker.internal:6379 \
+  redis-service
+
+# Or use the docker environment file
+docker run -d \
+  --name redis-service \
+  -p 3001:3001 \
+  --env-file .env.docker \
+  redis-service
+```
+
+### Option 3: Using Docker Network
+```bash
+# Create a network
+docker network create recipe-network
+
+# Run Redis
+docker run -d \
+  --name redis \
+  --network recipe-network \
+  redis:7-alpine
+
+# Run the Redis service
+docker run -d \
+  --name redis-service \
+  --network recipe-network \
+  -p 3001:3001 \
+  -e REDIS_URL=redis://redis:6379 \
+  redis-service
 ```

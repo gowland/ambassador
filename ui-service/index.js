@@ -52,7 +52,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.static('public'));
 
-const REDIS_SERVICE_URL = process.env.REDIS_SERVICE_URL || 'http://localhost:3001';
+const PROXY_SERVICE_URL = process.env.PROXY_SERVICE_URL || 'http://localhost:3002';
 
 // Proxy endpoint for adding ingredients to a recipe
 app.post('/recipe/:name', async (req, res) => {
@@ -63,7 +63,7 @@ app.post('/recipe/:name', async (req, res) => {
   console.log(`[PROXY] ${timestamp} POST /recipe/${name} - Forwarding to Redis service`);
 
   try {
-    const response = await axios.post(`${REDIS_SERVICE_URL}/recipe/${name}`, {
+    const response = await axios.post(`${PROXY_SERVICE_URL}/recipe/${name}`, {
       ingredients
     }, {
       headers: {
@@ -98,7 +98,7 @@ app.get('/recipe/:name', async (req, res) => {
   console.log(`[PROXY] ${timestamp} GET /recipe/${name} - Forwarding to Redis service`);
 
   try {
-    const response = await axios.get(`${REDIS_SERVICE_URL}/recipe/${name}`, {
+    const response = await axios.get(`${PROXY_SERVICE_URL}/recipe/${name}`, {
       timeout: 5000 // 5 second timeout
     });
 
@@ -133,32 +133,32 @@ app.get('/health', async (req, res) => {
   console.log(`[UI] ${timestamp} GET /health - Health check`);
   
   try {
-    // Check if Redis service is healthy
-    const redisHealthResponse = await axios.get(`${REDIS_SERVICE_URL}/health`, { timeout: 3000 });
+    // Check if Proxy service is healthy
+    const proxyHealthResponse = await axios.get(`${PROXY_SERVICE_URL}/health`, { timeout: 3000 });
     
     res.status(200).json({
       status: 'healthy',
       service: 'ui-service',
       timestamp,
       dependencies: {
-        redisService: {
+        proxyService: {
           status: 'healthy',
-          url: REDIS_SERVICE_URL,
-          response: redisHealthResponse.data
+          url: PROXY_SERVICE_URL,
+          response: proxyHealthResponse.data
         }
       }
     });
   } catch (error) {
-    console.error(`[UI ERROR] ${timestamp} Redis service health check failed:`, error.message);
+    console.error(`[UI ERROR] ${timestamp} Proxy service health check failed:`, error.message);
     
     res.status(503).json({
       status: 'degraded',
       service: 'ui-service',
       timestamp,
       dependencies: {
-        redisService: {
+        proxyService: {
           status: 'unhealthy',
-          url: REDIS_SERVICE_URL,
+          url: PROXY_SERVICE_URL,
           error: error.message
         }
       }
@@ -172,5 +172,5 @@ app.listen(PORT, () => {
   console.log(`[SERVER] ${timestamp} UI Service started successfully`);
   console.log(`[SERVER] ${timestamp} Server running on port ${PORT}`);
   console.log(`[SERVER] ${timestamp} Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`[SERVER] ${timestamp} Redis Service URL: ${REDIS_SERVICE_URL}`);
+  console.log(`[SERVER] ${timestamp} Proxy Service URL: ${PROXY_SERVICE_URL}`);
 });
