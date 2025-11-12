@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Proxy Service (Business Logic Layer)
+  proxy-service:
+    build:
+      context: ./proxy-service
+      dockerfile: Dockerfile
+    container_name: recipe-proxy-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      # Connect to external Redis service - update this URL to match your Redis service location
+      - REDIS_SERVICE_URL=http://host.docker.internal:3001
+    networks:
+      - recipe-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # UI Service (Presentation Layer)
+  ui-service:
+    build:
+      context: ./ui-service
+      dockerfile: Dockerfile
+    container_name: recipe-ui-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PROXY_SERVICE_URL=http://proxy-service:3002
+    depends_on:
+      - proxy-service
+    networks:
+      - recipe-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  recipe-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

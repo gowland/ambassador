@@ -1,0 +1,21 @@
+{
+  "name": "proxy-service",
+  "version": "1.0.0",
+  "description": "Proxy service that acts as middleware between UI and Redis services",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["proxy", "middleware", "recipe", "api"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "axios": "^1.6.0",
+    "cors": "^2.8.5"
+  }
+}
