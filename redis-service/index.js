@@ -80,10 +80,45 @@ redisClient.on('reconnecting', () => {
     console.log('[REDIS INFO]', new Date().toISOString(), 'Attempting to connect to Redis...');
     await redisClient.connect();
     console.log('[REDIS INFO]', new Date().toISOString(), 'Successfully connected to Redis');
+    
+    // Add a default recipe for testing purposes
+    await addDefaultRecipe();
   } catch (error) {
     console.error('[REDIS ERROR]', new Date().toISOString(), 'Failed to connect to Redis:', error.message);
   }
 })();
+
+// Function to add a default recipe for testing
+async function addDefaultRecipe() {
+  const timestamp = new Date().toISOString();
+  const defaultRecipeName = 'chocolate-chip-cookies';
+  const defaultIngredients = [
+    'flour',
+    'butter',
+    'brown sugar',
+    'white sugar',
+    'eggs',
+    'vanilla extract',
+    'chocolate chips',
+    'baking soda',
+    'salt'
+  ];
+
+  try {
+    // Check if the default recipe already exists
+    const existingRecipe = await redisClient.get(defaultRecipeName);
+    
+    if (!existingRecipe) {
+      await redisClient.set(defaultRecipeName, JSON.stringify(defaultIngredients));
+      console.log(`[INIT] ${timestamp} Added default recipe: ${defaultRecipeName} with ${defaultIngredients.length} ingredients`);
+      console.log(`[INIT] ${timestamp} Default recipe ingredients:`, defaultIngredients);
+    } else {
+      console.log(`[INIT] ${timestamp} Default recipe ${defaultRecipeName} already exists, skipping initialization`);
+    }
+  } catch (error) {
+    console.error(`[INIT ERROR] ${timestamp} Failed to add default recipe:`, error.message);
+  }
+}
 
 // Add ingredients to a recipe
 app.post('/recipe/:name', async (req, res) => {

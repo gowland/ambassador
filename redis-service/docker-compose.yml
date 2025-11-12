@@ -4,8 +4,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: recipe-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --save 60 1 --loglevel warning

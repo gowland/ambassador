@@ -2,7 +2,7 @@
 REM Build and run script for Redis Service (Windows)
 
 echo 🔨 Building Redis Service Docker image...
-docker build -t redis-service .
+docker-compose build --no-cache redis-service
 
 echo 🚀 Starting services with Docker Compose...
 docker-compose up -d
