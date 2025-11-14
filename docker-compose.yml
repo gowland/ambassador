@@ -7,13 +7,11 @@ services:
       context: ./proxy-service
       dockerfile: Dockerfile
     container_name: recipe-proxy-service
-    ports:
-      - "3002:3002"
     environment:
       - NODE_ENV=production
       - PORT=3002
-      # Connect to external Redis service - update this URL to match your Redis service location
-      - REDIS_SERVICE_URL=http://host.docker.internal:3001
+      # Base URL for Redis services - proxy will route to :3001, :3004, or :3003 based on recipe name
+      - REDIS_SERVICE_BASE_URL=http://host.docker.internal
     networks:
       - recipe-network
     restart: unless-stopped

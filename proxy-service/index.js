@@ -88,7 +88,20 @@ app.use(rateLimitMiddleware);
 
 app.use(express.json());
 
-const REDIS_SERVICE_URL = process.env.REDIS_SERVICE_URL || 'http://localhost:3001';
+const REDIS_SERVICE_BASE_URL = process.env.REDIS_SERVICE_BASE_URL || 'http://host.docker.internal';
+
+// Function to determine which Redis service to use based on recipe name
+const getRedisServiceUrl = (recipeName) => {
+  const firstLetter = recipeName.charAt(0).toLowerCase();
+  
+  if (firstLetter >= 'a' && firstLetter <= 'g') {
+    return `${REDIS_SERVICE_BASE_URL}:3001`; // A-G -> Port 3001
+  } else if (firstLetter >= 'h' && firstLetter <= 'r') {
+    return `${REDIS_SERVICE_BASE_URL}:3004`; // H-R -> Port 3004
+  } else {
+    return `${REDIS_SERVICE_BASE_URL}:3003`; // S-Z (and numbers/special chars) -> Port 3003
+  }
+};
 
 // Request validation middleware
 const validateRecipeRequest = (req, res, next) => {
@@ -142,11 +155,13 @@ app.post('/recipe/:name', validateRecipeRequest, validateIngredientsRequest, asy
   const { name } = req.params;
   const { ingredients } = req.body;
   const timestamp = new Date().toISOString();
-
+  
+  const redisServiceUrl = getRedisServiceUrl(name);
+  console.log(`[PROXY] ${timestamp} POST /recipe/${name} - Routing to ${redisServiceUrl} based on first letter '${name.charAt(0)}'`);
   console.log(`[PROXY] ${timestamp} POST /recipe/${name} - Forwarding ${ingredients.length} ingredients to Redis service`);
 
   try {
-    const response = await axios.post(`${REDIS_SERVICE_URL}/recipe/${encodeURIComponent(name)}`, {
+    const response = await axios.post(`${redisServiceUrl}/recipe/${encodeURIComponent(name)}`, {
       ingredients
     }, {
       headers: {
@@ -211,11 +226,13 @@ app.post('/recipe/:name', validateRecipeRequest, validateIngredientsRequest, asy
 app.get('/recipe/:name', validateRecipeRequest, async (req, res) => {
   const { name } = req.params;
   const timestamp = new Date().toISOString();
-
+  
+  const redisServiceUrl = getRedisServiceUrl(name);
+  console.log(`[PROXY] ${timestamp} GET /recipe/${name} - Routing to ${redisServiceUrl} based on first letter '${name.charAt(0)}'`);
   console.log(`[PROXY] ${timestamp} GET /recipe/${name} - Forwarding to Redis service`);
 
   try {
-    const response = await axios.get(`${REDIS_SERVICE_URL}/recipe/${encodeURIComponent(name)}`, {
+    const response = await axios.get(`${redisServiceUrl}/recipe/${encodeURIComponent(name)}`, {
       headers: {
         'X-Forwarded-For': req.ip,
         'X-Proxy-Service': 'recipe-proxy'
@@ -287,36 +304,50 @@ app.get('/health', async (req, res) => {
     dependencies: {}
   };
   
-  try {
-    // Check if Redis service is healthy
-    const redisHealthResponse = await axios.get(`${REDIS_SERVICE_URL}/health`, { 
-      timeout: 5000,
-      headers: {
-        'X-Proxy-Service': 'recipe-proxy'
-      }
-    });
-    
-    healthStatus.dependencies.redisService = {
-      status: 'healthy',
-      url: REDIS_SERVICE_URL,
-      responseTime: Date.now() - new Date(timestamp).getTime(),
-      response: redisHealthResponse.data
-    };
-    
-    res.status(200).json(healthStatus);
-  } catch (error) {
-    console.error(`[PROXY ERROR] ${timestamp} Redis service health check failed:`, error.message);
-    
-    healthStatus.status = 'degraded';
-    healthStatus.dependencies.redisService = {
-      status: 'unhealthy',
-      url: REDIS_SERVICE_URL,
-      error: error.message,
-      responseTime: Date.now() - new Date(timestamp).getTime()
-    };
-    
-    res.status(503).json(healthStatus);
+  // Check all three Redis services
+  const redisServices = [
+    { name: 'redis-service-1', url: `${REDIS_SERVICE_BASE_URL}:3001`, range: 'A-G' },
+    { name: 'redis-service-2', url: `${REDIS_SERVICE_BASE_URL}:3004`, range: 'H-R' },
+    { name: 'redis-service-3', url: `${REDIS_SERVICE_BASE_URL}:3003`, range: 'S-Z' }
+  ];
+  
+  let overallHealthy = true;
+  
+  for (const service of redisServices) {
+    try {
+      const redisHealthResponse = await axios.get(`${service.url}/health`, { 
+        timeout: 5000,
+        headers: {
+          'X-Proxy-Service': 'recipe-proxy'
+        }
+      });
+      
+      healthStatus.dependencies[service.name] = {
+        status: 'healthy',
+        url: service.url,
+        range: service.range,
+        responseTime: Date.now() - new Date(timestamp).getTime(),
+        response: redisHealthResponse.data
+      };
+      
+    } catch (error) {
+      console.error(`[PROXY ERROR] ${timestamp} ${service.name} health check failed:`, error.message);
+      
+      overallHealthy = false;
+      healthStatus.dependencies[service.name] = {
+        status: 'unhealthy',
+        url: service.url,
+        range: service.range,
+        error: error.message,
+        responseTime: Date.now() - new Date(timestamp).getTime()
+      };
+    }
   }
+  
+  healthStatus.status = overallHealthy ? 'healthy' : 'degraded';
+  const statusCode = overallHealthy ? 200 : 503;
+  
+  res.status(statusCode).json(healthStatus);
 });
 
 // Metrics endpoint
@@ -336,7 +367,12 @@ app.get('/metrics', (req, res) => {
     environment: {
       nodeVersion: process.version,
       platform: process.platform,
-      redisServiceUrl: REDIS_SERVICE_URL
+      redisServiceBaseUrl: REDIS_SERVICE_BASE_URL,
+      routingRules: {
+        'A-G': `${REDIS_SERVICE_BASE_URL}:3001`,
+        'H-R': `${REDIS_SERVICE_BASE_URL}:3004`,
+        'S-Z': `${REDIS_SERVICE_BASE_URL}:3003`
+      }
     }
   };
   
@@ -349,6 +385,10 @@ app.listen(PORT, () => {
   console.log(`[SERVER] ${timestamp} Proxy Service started successfully`);
   console.log(`[SERVER] ${timestamp} Server running on port ${PORT}`);
   console.log(`[SERVER] ${timestamp} Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`[SERVER] ${timestamp} Redis Service URL: ${REDIS_SERVICE_URL}`);
+  console.log(`[SERVER] ${timestamp} Redis Service Base URL: ${REDIS_SERVICE_BASE_URL}`);
+  console.log(`[SERVER] ${timestamp} Recipe Routing Rules:`);
+  console.log(`[SERVER] ${timestamp}   A-G recipes -> ${REDIS_SERVICE_BASE_URL}:3001`);
+  console.log(`[SERVER] ${timestamp}   H-R recipes -> ${REDIS_SERVICE_BASE_URL}:3004`);
+  console.log(`[SERVER] ${timestamp}   S-Z recipes -> ${REDIS_SERVICE_BASE_URL}:3003`);
   console.log(`[SERVER] ${timestamp} Rate Limit: ${RATE_LIMIT_MAX} requests per ${RATE_LIMIT_WINDOW/1000} seconds`);
 });
