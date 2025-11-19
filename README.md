@@ -4,16 +4,16 @@ This project has been split into multiple Node.js services organized in a pod-ba
 
 ## Architecture Overview
 
-### Frontend Pod (rontend-pod/)
+### Frontend Pod (frontend-pod/)
 The UI and Proxy services are deployed together as a cohesive frontend pod:
 
-#### 1. UI Service (rontend-pod/ui-service/)
+#### 1. UI Service (frontend-pod/ui-service/)
 - Serves the web interface
 - Proxies API calls to the Proxy service
 - Handles static file serving
 - Runs on port 3000
 
-#### 2. Proxy Service (rontend-pod/proxy-service/)
+#### 2. Proxy Service (frontend-pod/proxy-service/)
 - Acts as intelligent middleware layer
 - Provides request validation and rate limiting
 - Enhances logging and monitoring
@@ -22,7 +22,7 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
 
 ### Backend Service
 
-#### 3. Redis Service (edis-service/)
+#### 3. Redis Service (redis-service/)
 - Handles data storage and retrieval operations
 - Manages Redis database connections
 - Provides RESTful API for recipe data
@@ -33,14 +33,14 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
 ### Option 1: Using the Frontend Pod (Recommended)
 
 1. **Start Redis Service**:
-   `ash
+   `bash
    cd redis-service
    npm install
    npm start
    `
 
 2. **Start the Frontend Pod**:
-   `ash
+   `bash
    cd frontend-pod
    ./start-pod.ps1    # For PowerShell
    # or
@@ -55,7 +55,7 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
 ### Option 2: Manual Service Startup
 
 1. **Start Redis** (if not already running):
-   `ash
+   `bash
    # Using Docker
    docker run -d -p 6379:6379 redis:alpine
 
@@ -64,14 +64,14 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
    `
 
 2. **Start Redis Service**:
-   `ash
+   `bash
    cd redis-service
    npm install
    npm start
    `
 
 3. **Start Frontend Pod Services** (in new terminals):
-   `ash
+   `bash
    cd frontend-pod/proxy-service
    npm install
    npm start
@@ -82,17 +82,39 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
    npm start
    `
 
-## Architecture Diagram
+## Architecture Design
 
-`
-â"Œâ"â"â"â"â"â"â"â"â"â"â"â"â"â"    â"Œâ"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"    â"Œâ"â"â"â"â"â"â"â"â"â"â"â"â"â"    â"Œâ"â"â"â"â"â"â"â"â"â"â"â"â"â"
-â"   Browser   â"    â"        Frontend Pod            â"    â"Redis Serviceâ"    â"   Redis     â"
-â"             â"    â"  â"Œâ"â"â"â"â"â"â"â"â"â"â"â"    â"Œâ"â"â"â"â"â"â"â"â"â"â"â"  â"    â" (Port 3001) â"    â" (Port 6379) â"
-â""â"â"â"â"â"â"â"â"â"â"â"â"â"â"    â"  â"UI Service  â"    â"Proxy Svc.â"  â"    â""â"â"â"â"â"â"â"â"â"â"â"â"â"â"    â""â"â"â"â"â"â"â"â"â"â"â"â"â"â"
-        â"        â"  â"(Port 3000) â"    â"(Port 3002)â"  â"            â"
-        â""â"â"â"â"â"â"â"â"â"  â""â"â"â"â"â"â"â"â"â"â"â"â"    â""â"â"â"â"â"â"â"â"â"â"â"â"  â"â"â"â"â"â"â"â"â"â"â"â"â"â"
-                 â""â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"
-`
+### System Flow
+
+```
+[Browser] 
+    ↓ (HTTP requests)
+[Frontend Pod]
+    ├── UI Service (Port 3000) - Web interface & static files
+    └── Proxy Service (Port 3002) - Request validation & routing
+              ↓ (API calls)
+[Redis Service] (Port 3001) - Data operations
+              ↓ (Database queries)  
+[Redis Database] (Port 6379) - Data storage
+```
+
+### Component Responsibilities
+
+**Frontend Pod** (Co-located services)
+- **UI Service**: Serves the web application and handles user interactions
+- **Proxy Service**: Validates requests, enforces rate limits, and routes API calls
+
+**Backend Services**
+- **Redis Service**: Manages all data operations and database connections
+- **Redis Database**: Persistent storage for recipe data
+
+### Request Flow
+
+1. **User Interaction**: Browser sends HTTP requests to UI Service (port 3000)
+2. **API Routing**: UI Service forwards API calls to Proxy Service (port 3002)  
+3. **Request Processing**: Proxy Service validates and routes to Redis Service (port 3001)
+4. **Data Operations**: Redis Service performs CRUD operations on Redis Database (port 6379)
+5. **Response Chain**: Results flow back through the same path to the user
 
 ## API Endpoints
 

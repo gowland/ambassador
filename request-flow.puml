@@ -1,0 +1,81 @@
+@startuml Recipe Management System - Request Flow
+
+title Recipe Management System - API Request Sequence
+
+actor User
+participant "Browser" as Browser
+participant "UI Service\n(Port 3000)" as UI
+participant "Proxy Service\n(Port 3002)" as Proxy
+participant "Redis Service 1\n(Port 3001)" as RedisService1
+participant "Redis Service 2\n(Port 3004)" as RedisService2
+participant "Redis Service 3\n(Port 3003)" as RedisService3
+database "Redis DB 1\n(Port 6379)" as RedisDB1
+database "Redis DB 2\n(Port 6380)" as RedisDB2
+database "Redis DB 3\n(Port 6381)" as RedisDB3
+
+== Recipe Creation Flow ==
+
+User -> Browser: Enter recipe data
+Browser -> UI: POST /recipe/pasta
+note right: HTTP request to UI Service
+
+UI -> Proxy: Forward API call
+note right: Proxy API on port 3002
+
+Proxy -> Proxy: Validate request\nApply rate limiting\nLog request\nSelect Redis instance
+note right: Request processing\n& load balancing
+
+Proxy -> RedisService1: POST /recipe/pasta
+note right: Route to Redis Service 1\n(Load balanced selection)
+
+RedisService1 -> RedisDB1: SET pasta ingredients
+note right: Store recipe data
+
+RedisDB1 --> RedisService1: Confirmation
+RedisService1 --> Proxy: 201 Created
+Proxy --> UI: 201 Created
+UI --> Browser: Success response
+Browser --> User: Recipe saved confirmation
+
+== Recipe Retrieval Flow ==
+
+User -> Browser: Request recipe
+Browser -> UI: GET /recipe/pasta
+
+UI -> Proxy: Forward GET request
+Proxy -> Proxy: Validate & log\nSelect Redis instance
+Proxy -> RedisService2: GET /recipe/pasta
+note right: Route to Redis Service 2\n(Load balanced selection)
+RedisService2 -> RedisDB2: GET pasta
+RedisDB2 --> RedisService2: Recipe data
+RedisService2 --> Proxy: 200 OK + data
+Proxy --> UI: 200 OK + data
+UI --> Browser: Recipe display
+Browser --> User: Show recipe
+
+== Health Check Flow ==
+
+Browser -> UI: GET /health
+UI -> Proxy: Forward health check
+
+' Health check all Redis services
+Proxy -> RedisService1: GET /health
+Proxy -> RedisService2: GET /health  
+Proxy -> RedisService3: GET /health
+
+RedisService1 -> RedisDB1: Ping database
+RedisService2 -> RedisDB2: Ping database
+RedisService3 -> RedisDB3: Ping database
+
+RedisDB1 --> RedisService1: Pong
+RedisDB2 --> RedisService2: Pong
+RedisDB3 --> RedisService3: Pong
+
+RedisService1 --> Proxy: Service 1 healthy
+RedisService2 --> Proxy: Service 2 healthy
+RedisService3 --> Proxy: Service 3 healthy
+
+Proxy --> UI: All services healthy
+UI --> Browser: System status OK
+
+@enduml

@@ -1,0 +1,105 @@
+@startuml Recipe Management System Architecture
+
+!define RECTANGLE class
+
+title Recipe Management System - Microservices Architecture
+
+actor User as U
+node "Browser" as Browser {
+}
+
+package "Frontend Pod" as FrontendPod {
+    component "UI Service" as UI {
+        port "3000" as UI_PORT
+        note right : Web interface\nStatic file serving\nUser interactions
+    }
+    
+    component "Proxy Service" as Proxy {
+        port "3002" as PROXY_PORT
+        note right : Request validation\nRate limiting\nAPI routing\nLogging & monitoring
+    }
+}
+
+package "Redis Pod 1" as RedisPod1 {
+    component "Redis Service 1" as RedisService1 {
+        port "3001" as REDIS_SVC_PORT1
+        note right : Primary instance\nData operations\nCRUD operations
+    }
+    
+    database "Redis Database 1" as RedisDB1 {
+        port "6379" as REDIS_DB_PORT1
+        note right : Recipe data storage
+    }
+}
+
+package "Redis Pod 2" as RedisPod2 {
+    component "Redis Service 2" as RedisService2 {
+        port "3004" as REDIS_SVC_PORT2
+        note right : Scaled instance\nLoad distribution
+    }
+    
+    database "Redis Database 2" as RedisDB2 {
+        port "6380" as REDIS_DB_PORT2
+        note right : Recipe data storage
+    }
+}
+
+package "Redis Pod 3" as RedisPod3 {
+    component "Redis Service 3" as RedisService3 {
+        port "3003" as REDIS_SVC_PORT3
+        note right : Scaled instance\nLoad distribution
+    }
+    
+    database "Redis Database 3" as RedisDB3 {
+        port "6381" as REDIS_DB_PORT3
+        note right : Recipe data storage
+    }
+}
+
+' Connections with labels
+U --> Browser : HTTP requests
+Browser --> UI_PORT : HTTP requests
+UI --> PROXY_PORT : API calls
+
+' Load balancing to multiple Redis pods
+Proxy --> REDIS_SVC_PORT1 : Load balanced\nrequests
+Proxy --> REDIS_SVC_PORT2 : Load balanced\nrequests  
+Proxy --> REDIS_SVC_PORT3 : Load balanced\nrequests
+
+' Internal pod connections
+RedisService1 --> REDIS_DB_PORT1 : Database queries
+RedisService2 --> REDIS_DB_PORT2 : Database queries
+RedisService3 --> REDIS_DB_PORT3 : Database queries
+
+' Pod grouping lines
+FrontendPod -[hidden]-> RedisPod1
+RedisPod1 -[hidden]-> RedisPod2
+RedisPod2 -[hidden]-> RedisPod3
+
+' Styling
+skinparam component {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+}
+
+skinparam package {
+    BackgroundColor LightGray
+    BorderColor Black
+}
+
+skinparam database {
+    BackgroundColor Orange
+    BorderColor DarkRed
+}
+
+skinparam actor {
+    BackgroundColor Yellow
+    BorderColor DarkGreen
+}
+
+skinparam node {
+    BackgroundColor LightGreen
+    BorderColor DarkGreen
+}
+
+@enduml
