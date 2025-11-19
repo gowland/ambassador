@@ -106,18 +106,18 @@ All logs include ISO timestamps for precise timing and debugging.
 ## Installation
 
 1. Install dependencies:
-   ```bash
+   ```powershell
    npm install
    ```
 
 2. Set up environment variables:
-   ```bash
-   cp .env.example .env
+   ```powershell
+   Copy-Item .env.example .env
    # Edit .env with your configuration
    ```
 
 3. Start the service:
-   ```bash
+   ```powershell
    npm start
    ```
 
@@ -167,7 +167,7 @@ The service runs on port 3001 by default and provides extensive logging for deve
 ### Local Development Setup
 
 1. **Start Redis locally:**
-   ```bash
+   ```powershell
    # Using Docker
    docker run -d --name redis-dev -p 6379:6379 redis:7-alpine
    
@@ -176,20 +176,20 @@ The service runs on port 3001 by default and provides extensive logging for deve
    ```
 
 2. **Install dependencies:**
-   ```bash
+   ```powershell
    npm install
    ```
 
 3. **Configure environment:**
-   ```bash
+   ```powershell
    # Create .env file
-   echo "REDIS_URL=redis://localhost:6379" > .env
-   echo "PORT=3001" >> .env
-   echo "NODE_ENV=development" >> .env
+   "REDIS_URL=redis://localhost:6379" | Out-File -FilePath .env -Encoding UTF8
+   "PORT=3001" | Out-File -FilePath .env -Append -Encoding UTF8
+   "NODE_ENV=development" | Out-File -FilePath .env -Append -Encoding UTF8
    ```
 
 4. **Start the service:**
-   ```bash
+   ```powershell
    npm start
    # or for development with auto-restart
    npm run dev  # if nodemon is configured
@@ -205,20 +205,21 @@ The service runs on port 3001 by default and provides extensive logging for deve
 
 ### Testing the API
 
-```bash
+```powershell
 # Test health endpoint
-curl http://localhost:3001/health
+Invoke-RestMethod -Uri "http://localhost:3001/health"
 
 # Add ingredients to a recipe
-curl -X POST http://localhost:3001/recipe/test-recipe \
-  -H "Content-Type: application/json" \
-  -d '{"ingredients": ["flour", "sugar", "eggs"]}'
+$body = @{
+    ingredients = @("flour", "sugar", "eggs")
+} | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:3001/recipe/test-recipe" -Method POST -Body $body -ContentType "application/json"
 
 # Get recipe ingredients
-curl http://localhost:3001/recipe/test-recipe
+Invoke-RestMethod -Uri "http://localhost:3001/recipe/test-recipe"
 
 # Check the default recipe
-curl http://localhost:3001/recipe/chocolate-chip-cookies
+Invoke-RestMethod -Uri "http://localhost:3001/recipe/chocolate-chip-cookies"
 ```
 
 ## Container Composition
@@ -275,7 +276,7 @@ networks:
 ```
 
 **Usage:**
-```bash
+```powershell
 # Start the entire stack
 docker-compose up -d
 
@@ -292,47 +293,47 @@ docker-compose down -v
 ### Standalone Container Deployment
 
 #### Option 1: Docker Network (Production)
-```bash
+```powershell
 # Create dedicated network
 docker network create recipe-network
 
 # Start Redis database
-docker run -d \
-  --name redis-db \
-  --network recipe-network \
-  -v redis_data:/data \
-  --health-cmd="redis-cli ping" \
-  --health-interval=10s \
-  --health-timeout=3s \
-  --health-retries=3 \
+docker run -d `
+  --name redis-db `
+  --network recipe-network `
+  -v redis_data:/data `
+  --health-cmd="redis-cli ping" `
+  --health-interval=10s `
+  --health-timeout=3s `
+  --health-retries=3 `
   redis:7-alpine redis-server --appendonly yes
 
 # Build and run the Redis service
 docker build -t redis-service:latest .
 
-docker run -d \
-  --name redis-service \
-  --network recipe-network \
-  -p 3001:3001 \
-  -e NODE_ENV=production \
-  -e REDIS_URL=redis://redis-db:6379 \
-  --restart unless-stopped \
+docker run -d `
+  --name redis-service `
+  --network recipe-network `
+  -p 3001:3001 `
+  -e NODE_ENV=production `
+  -e REDIS_URL=redis://redis-db:6379 `
+  --restart unless-stopped `
   redis-service:latest
 ```
 
 #### Option 2: Host Network (Development)
-```bash
+```powershell
 # Start Redis locally
 docker run -d --name redis-local -p 6379:6379 redis:7-alpine
 
 # Build and run service
 docker build -t redis-service:dev .
 
-docker run -d \
-  --name redis-service-dev \
-  -p 3001:3001 \
-  -e REDIS_URL=redis://host.docker.internal:6379 \
-  -e NODE_ENV=development \
+docker run -d `
+  --name redis-service-dev `
+  -p 3001:3001 `
+  -e REDIS_URL=redis://host.docker.internal:6379 `
+  -e NODE_ENV=development `
   redis-service:dev
 ```
 
@@ -408,9 +409,9 @@ spec:
 
 The service provides multiple layers of health monitoring:
 
-```bash
+```powershell
 # Basic health check
-curl http://localhost:3001/health
+Invoke-RestMethod -Uri "http://localhost:3001/health"
 
 # Container health check (automatic)
 docker ps  # Shows health status in STATUS column
@@ -423,13 +424,13 @@ kubectl get pods  # Shows pod health status
 
 Monitor service health through structured logs:
 
-```bash
+```powershell
 # View real-time logs
 docker logs -f redis-service
 
 # Filter by log category
-docker logs redis-service 2>&1 | grep "\[API\]"
-docker logs redis-service 2>&1 | grep "\[REDIS ERROR\]"
+docker logs redis-service 2>&1 | Select-String "\[API\]"
+docker logs redis-service 2>&1 | Select-String "\[REDIS ERROR\]"
 
 # In Kubernetes
 kubectl logs -f deployment/redis-service

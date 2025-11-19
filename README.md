@@ -33,19 +33,19 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
 ### Option 1: Using the Frontend Pod (Recommended)
 
 1. **Start Redis Service**:
-   `bash
+   ```powershell
    cd redis-service
    npm install
    npm start
-   `
+   ```
 
 2. **Start the Frontend Pod**:
-   `bash
+   ```powershell
    cd frontend-pod
-   ./start-pod.ps1    # For PowerShell
+   .\start-pod.ps1    # For PowerShell
    # or
-   ./start-pod.bat    # For Command Prompt
-   `
+   .\start-pod.bat    # For Command Prompt
+   ```
 
 3. **Access the application**:
    - Web Interface: http://localhost:3000
@@ -55,23 +55,23 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
 ### Option 2: Manual Service Startup
 
 1. **Start Redis** (if not already running):
-   `bash
+   ```powershell
    # Using Docker
    docker run -d -p 6379:6379 redis:alpine
 
    # Or install locally and start
    redis-server
-   `
+   ```
 
 2. **Start Redis Service**:
-   `bash
+   ```powershell
    cd redis-service
    npm install
    npm start
-   `
+   ```
 
 3. **Start Frontend Pod Services** (in new terminals):
-   `bash
+   ```powershell
    cd frontend-pod/proxy-service
    npm install
    npm start
@@ -80,9 +80,21 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
    cd frontend-pod/ui-service
    npm install
    npm start
-   `
+   ```
 
 ## Architecture Design
+
+### Complete System Architecture
+
+![Architecture Diagram](architecture.png)
+
+*Component diagram showing all services, pods, and their relationships with load balancing across multiple Redis instances.*
+
+### API Request Flow
+
+![Request Flow Sequence](request-flow.png)
+
+*Sequence diagram showing how API requests are processed through the system with load balancing across multiple Redis services.*
 
 ### System Flow
 
@@ -92,10 +104,10 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
 [Frontend Pod]
     ├── UI Service (Port 3000) - Web interface & static files
     └── Proxy Service (Port 3002) - Request validation & routing
-              ↓ (API calls)
-[Redis Service] (Port 3001) - Data operations
-              ↓ (Database queries)  
-[Redis Database] (Port 6379) - Data storage
+              ↓ (Load balanced API calls)
+[Redis Pod 1] (Port 3001) ─┐
+[Redis Pod 2] (Port 3004) ─┼─ Data operations & storage
+[Redis Pod 3] (Port 3003) ─┘
 ```
 
 ### Component Responsibilities
@@ -104,16 +116,17 @@ The UI and Proxy services are deployed together as a cohesive frontend pod:
 - **UI Service**: Serves the web application and handles user interactions
 - **Proxy Service**: Validates requests, enforces rate limits, and routes API calls
 
-**Backend Services**
-- **Redis Service**: Manages all data operations and database connections
-- **Redis Database**: Persistent storage for recipe data
+**Redis Pods** (Distributed for scaling)
+- **Redis Pod 1** (Port 3001): Primary data operations and Redis database (Port 6379)
+- **Redis Pod 2** (Port 3004): Load-balanced data operations and Redis database (Port 6380)
+- **Redis Pod 3** (Port 3003): Load-balanced data operations and Redis database (Port 6381)
 
 ### Request Flow
 
 1. **User Interaction**: Browser sends HTTP requests to UI Service (port 3000)
 2. **API Routing**: UI Service forwards API calls to Proxy Service (port 3002)  
-3. **Request Processing**: Proxy Service validates and routes to Redis Service (port 3001)
-4. **Data Operations**: Redis Service performs CRUD operations on Redis Database (port 6379)
+3. **Request Processing**: Proxy Service validates and load balances across Redis Services (ports 3001, 3003, 3004)
+4. **Data Operations**: Selected Redis Service performs CRUD operations on its Redis Database
 5. **Response Chain**: Results flow back through the same path to the user
 
 ## API Endpoints
@@ -135,22 +148,22 @@ Each service can be developed and deployed independently:
 ## Environment Configuration
 
 **redis-service/.env**:
-`env
+```env
 REDIS_URL=redis://localhost:6379
 PORT=3001
-`
+```
 
 **frontend-pod/ui-service/.env**:
-`env
+```env
 PORT=3000
 PROXY_SERVICE_URL=http://localhost:3002
-`
+```
 
 **frontend-pod/proxy-service/.env**:
-`env
+```env
 PORT=3002
 REDIS_SERVICE_BASE_URL=http://localhost
-`
+```
 
 ## Benefits of This Architecture
 

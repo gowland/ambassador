@@ -1,6 +1,16 @@
 ﻿# Frontend Pod
 
-This directory contains the UI and Proxy services that are deployed together as a cohesive frontend pod. These services work together to provide the user-facing layer of the Recipe Management System.
+This directory contains th```powershell
+# Start Proxy service
+cd proxy-service
+npm install
+npm start
+
+# Start UI service (in another terminal)
+cd ui-service  
+npm install
+npm start
+```oxy services that are deployed together as a cohesive frontend pod. These services work together to provide the user-facing layer of the Recipe Management System.
 
 ## Services
 
@@ -18,14 +28,14 @@ This directory contains the UI and Proxy services that are deployed together as 
 
 The services in this pod are designed to be deployed together using Docker Compose:
 
-`ash
+```powershell
 # Build and start both services
 docker-compose up --build
 
 # Or use the convenience scripts
-./start-pod.ps1    # PowerShell
-./start-pod.bat    # Command Prompt
-`
+.\start-pod.ps1    # PowerShell
+.\start-pod.bat    # Command Prompt
+```
 
 ## Architecture Rationale
 
